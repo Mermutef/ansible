@@ -1,0 +1,67 @@
+- hosts: alt
+  become: true
+  vars_files:
+    - vars.yml
+  tasks:
+    - name: Update cache and install postgresql14-server
+      apt_rpm:
+        name: postgresql14-server
+        state: present
+        update_cache: yes
+      become: true
+
+    - name: Check if PostgreSQL is initialized
+      ansible.builtin.stat:
+        path: "{{ postgresql_data_dir }}/PG_VERSION"
+      register: postgres_data
+
+    - name: Empty data dir
+      ansible.builtin.file:
+        path: "{{ postgresql_data_dir }}"
+        state: absent
+      when: not postgres_data.stat.exists
+
+    - name: Initialize PostgreSQL
+      ansible.builtin.shell: "{{ postgresql_bin_path }} initdb"
+      become: true
+      when: not postgres_data.stat.exists
+
+    - name: Start and enable service
+      ansible.builtin.service:
+        name: postgresql
+        state: started
+        enabled: true
+
+    - name: Check if localhost is already listenned by postgresql
+      lineinfile:
+        state: absent
+        path: "{{ postgresql_data_dir }}/postgresql.conf"
+        regexp: "^listen_addresses='localhost'$"
+      check_mode: true
+      changed_when: false
+      register: check
+
+    - name: Define listening localhost if undefined
+      lineinfile:
+        state: present
+        path: "{{ postgresql_data_dir }}/postgresql.conf"
+        line: "listen_addresses='localhost'"
+      when: check.found == 0
+
+    - name: Check if sha-256 is already used by postgresql
+      lineinfile:
+        state: absent
+        path: "{{ postgresql_data_dir }}/postgresql.conf"
+        regexp: "^password_encryption=scram-sha-256$"
+      check_mode: true
+      changed_when: false
+      register: check
+
+    - name: Define using of sha-256 if undefined
+      lineinfile:
+        state: present
+        path: "{{ postgresql_data_dir }}/postgresql.conf"
+        line: "password_encryption=scram-sha-256"
+      when: check.found == 0
+
+

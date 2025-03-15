@@ -1,0 +1,16 @@
+- hosts: alt
+  become: true
+  tasks:
+    - name: Update cache and install gitea
+      apt_rpm:
+        name: gitea 
+        state: present
+        update_cache: yes
+      become: true
+
+    - name: Start and enable service
+      ansible.builtin.service:
+        name: gitea
+        state: started
+        enabled: true
+
