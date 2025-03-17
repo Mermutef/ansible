@@ -1,12 +1,12 @@
 - hosts: alt
   become: true
+  become_method: su
   tasks:
     - name: Update cache and install gitea
       apt_rpm:
         name: gitea 
         state: present
         update_cache: yes
-      become: true
 
     - name: Start and enable service
       ansible.builtin.service:
@@ -14,3 +14,13 @@
         state: started
         enabled: true
 
+    - name: Copy file with owner and permissions
+      ansible.builtin.copy:
+        src: ./app.ini
+        dest: /etc/gitea/app.ini
+        owner: gitea
+        group: gitea
+        mode: '0600'
+
+    - name: Start gitea
+      ansible.builtin.shell: su -l gitea -s /bin/sh -c "/usr/bin/gitea web > /var/lib/gitea/last-start.log 2>&1 &"

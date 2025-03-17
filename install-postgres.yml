@@ -1,5 +1,6 @@
 - hosts: alt
   become: true
+  become_method: su
   vars_files:
     - vars.yml
   tasks:
@@ -8,7 +9,6 @@
         name: postgresql14-server
         state: present
         update_cache: yes
-      become: true
 
     - name: Check if PostgreSQL is initialized
       ansible.builtin.stat:
@@ -22,8 +22,7 @@
       when: not postgres_data.stat.exists
 
     - name: Initialize PostgreSQL
-      ansible.builtin.shell: "{{ postgresql_bin_path }} initdb"
-      become: true
+      ansible.builtin.shell: "su -l postgres -s /bin/sh -c \"initdb --pgdata=\"{{ postgresql_data_dir }}\"\""
       when: not postgres_data.stat.exists
 
     - name: Start and enable service

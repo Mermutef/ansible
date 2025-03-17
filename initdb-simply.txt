@@ -1,0 +1,252 @@
+#!/bin/sh
+#
+# /etc/init.d/postgresql
+#
+# postgresql    This is the init script for starting up the PostgreSQL
+#               server
+# chkconfig: - 85 15
+# description: Starts and stops the PostgreSQL backend daemon that handles \
+#              all database requests.
+# processname: postgres
+# pidfile: /var/run/postmaster.pid
+
+### BEGIN INIT INFO
+# Provides: postgresql postgresql14
+# Required-Start: $local_fs $remote_fs $network $time
+# Required-Stop: $local_fs $remote_fs $network $time
+# Should-Start: $syslog
+# Should-Stop: $syslog
+# Default-Start:
+# Default-Stop: 0 1 6
+# Short-Description: PostgreSQL RDBMS Server
+# Description: PostgreSQL is an advanced Object-Relational database
+#  management system is a very fast and reliable database
+### END INIT INFO
+
+# Do not load RH compatibility interface.
+WITHOUT_RC_COMPAT=1
+
+# Source function library.
+. /etc/init.d/functions
+
+if test -f /etc/sysconfig/postgresql; then
+    . /etc/sysconfig/postgresql
+fi
+
+unset LANG
+
+RETVAL=0
+LOCKFILE=/var/lock/subsys/postgresql
+PIDFILE="$PGDATA/postmaster.pid"
+PGLOG="$PGDATA/pgstartup.log"
+
+delete_wrong_pidfile()
+{
+        if [ ! -f "$PIDFILE" ]; then
+            return
+        fi
+
+        # FIXME: pg_ctl is buggy and lockup if pid file incorrect
+        # zero-size pidfile must be cleaned
+        if [ -f "$PIDFILE" -a ! -s "$PIDFILE" ]; then
+                rm -f "$PIDFILE"
+                return
+        fi
+
+        PID="$(head -n1 $PIDFILE)"
+
+        # PID-file is buggy
+        if [ "x" == "x$PID" ]; then
+            rm -f "$PIDFILE"
+            return
+        fi
+
+        # Process not exists
+        if [ ! -d "/proc/$PID" ]; then
+            rm -f "$PIDFILE"
+            return
+        fi
+
+        # This process not postgres process
+        check="$(readlink /proc/$PID/exe | grep -c postgres)"
+        if [ "$check" -eq 0 ]; then
+            rm -f "$PIDFILE"
+            return
+        fi
+}
+
+
+find_socket()
+{
+        local n f
+        for n in "$@"; do
+                for f in "$n"*; do
+                    if [ -S "$f" ]; then
+                        echo "$f"
+                        return 0
+                    fi
+                done
+        done
+        return 1
+}
+
+wait_socket()
+{
+        local w_times="$1"
+        shift
+        local w_delay="$1"
+        shift
+
+        local i=0
+        while [ $i -lt "$w_times" ]; do
+                filelist="$(find_socket /tmp/.s.PGSQL.*)"
+                if [ -n "$filelist" ]; then
+                    echo $filelist
+                    return 0
+                fi
+                sleep "$w_delay"
+                i=$[1+i]
+        done
+        return 1
+}
+
+initdb()
+{
+        if [ ! -d "$PGDATA" ]; then
+                mkdir -p "$PGDATA"
+                chown postgres.postgres "$PGDATA"
+        fi
+        if [ -z "$PGLOCALE" ]
+        then
+            locale_list="$(su -l postgres -s /bin/sh -c '/usr/bin/locale')"
+            PGLOCALE="$(echo $locale_list | tr ' ' '\n' | grep LANG | cut -d '=' -f2 )"
+        fi
+        if [ -z "$PGMETHOD" ]
+        then
+            PGMETHOD="scram-sha-256"
+        fi
+        echo "Creating default database:"
+        su -s /bin/sh -l postgres -c "initdb  --pgdata=\"$PGDATA\" --locale=\"$PGLOCALE\""
+        RETVAL=$?
+        [ "$RETVAL" -ne 0 ] && return $RETVAL
+}
+
+start()
+{
+        export PGDATA
+
+        msg_starting postgresql
+
+        # Check for the PGDATA structure
+        if [ -f "$PGDATA/PG_VERSION" ] && [ -d "$PGDATA/base" ]; then
+
+                # Check version of existing PGDATA
+                if [ $(cat "$PGDATA/PG_VERSION") != '14' ]; then
+                        failure "Old version. Need to Upgrade. See /usr/share/doc/postgresql-14.17/README.rpm-dist for more information."
+                        RETVAL=$?
+                        echo
+                        return $RETVAL
+                fi
+
+        else
+                # No existing PGDATA! Warn the user to initdb it.
+                echo
+                echo "$PGDATA is missing. Use \"service postgresql initdb\" to initialize the cluster first."
+                echo_failure
+                echo
+                RETVAL=1
+                return $RETVAL
+        fi
+
+        su -l postgres -s /bin/sh -c "/usr/bin/postgres -D $PGDATA &" >> "$PGLOG" 2>&1 < /dev/null
+
+        sleep 2
+        pid="$(pidof -s /usr/bin/postgres)"
+        if [ "$pid" -a -f "$PGDATA/postmaster.pid" ]; then
+                success
+                echo
+                touch "$LOCKFILE"
+        else
+                failure
+                RETVAL=$?
+                echo
+                echo "See \"$PGLOG\" for details"
+                return $RETVAL
+        fi
+}
+
+stop()
+{
+        # pidfile exists -- may be server running
+        if [ -f "$PIDFILE" ]; then
+                msg_stopping postgresql
+                if su -l postgres -s /bin/sh -c "/usr/bin/pg_ctl -D \"$PGDATA\" stop -mf" >/dev/null 2>&1; then
+                        rm -f "$LOCKFILE"
+                        echo_success
+                else
+                        echo_failure
+                fi
+        else
+                msg_not_running postgresql
+                echo_passed
+        fi
+                echo
+}
+
+restart()
+{
+        stop
+        start
+}
+
+reload()
+{
+        msg_reloading postgresql
+        if su -l postgres -s /bin/sh -c "/usr/bin/pg_ctl -D \"$PGDATA\" reload" >/dev/null 2>&1; then
+                echo_success
+        else
+                echo_failure
+        fi
+        echo
+}
+
+
+delete_wrong_pidfile
+
+# See how we were called.
+case "$1" in
+        start)
+                start
+                ;;
+        stop)
+                stop
+                ;;
+        initdb)
+                initdb
+                ;;
+        reload)
+                reload
+                ;;
+        restart)
+                restart
+                ;;
+        condstop)
+                if [ -e "$LOCKFILE" ]; then
+                        stop
+                fi
+                ;;
+        condrestart)
+                if [ -e "$LOCKFILE" ]; then
+                        restart
+                fi
+                ;;
+        status)
+                status --expect-user postgres postgres
+                RETVAL=$?
+                ;;
+        *)
+                echo "Usage: ${0##*/} {start|stop|initdb|reload|restart|condstop|condrestart|status}"
+                RETVAL=1
+esac
+
+exit $RETVAL
