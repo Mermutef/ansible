@@ -1,0 +1,164 @@
+- name: Install and configure Woodpecker CI with Gitea integration
+  hosts: alt
+  become: true
+  become_method: su
+  vars:
+    woodpecker_version: "v3.4.0"
+    db_user: "woodpecker"
+    db_name: "woodpecker"
+    db_password: "woodpecker"
+    postgresql_data_dir: "/var/lib/pgsql/data"
+    agent_secret: "{{ lookup('password', '/dev/null length=32 chars=hexdigits') }}"
+    gitea_client_id: "60fab95a-f298-4d02-8d93-456fdb551bae"
+    gitea_client_secret: "gto_gndzjcpiympu4k3lfe54sjd2jchyqbgu36agqd4flt5c4ss4s4vq"
+
+  tasks:
+    # Установка зависимостей
+    - name: Install required packages
+      apt_rpm:
+        name: ["postgresql14-server", "tar", "wget", "docker-engine"]
+        state: latest
+        update_cache: yes
+
+    # Настройка PostgreSQL
+    - name: Create db user
+      community.postgresql.postgresql_user:
+        state: present
+        name: "{{ db_user }}"
+        password: "{{ db_password }}"
+        role_attr_flags: CREATEDB
+
+    - name: Create db
+      community.postgresql.postgresql_db:
+        state: present
+        name: "{{ db_name }}"
+        owner: "{{ db_user }}"
+        template: template0
+        encoding: UTF8
+        lc_collate: "ru_RU.UTF-8"
+        lc_ctype: "ru_RU.UTF-8"
+
+    - name: Check if {{ db_user }} have access to {{ db_name }}
+      lineinfile:
+        state: absent
+        path: "{{ postgresql_data_dir }}/pg_hba.conf"
+        regexp: "^local    {{ db_name }}    {{ db_user }}    scram-sha-256$"
+      check_mode: true
+      changed_when: false
+      register: check
+
+    - name: Define {{ db_user }} access to {{ db_name }} if undefined
+      lineinfile:
+        state: present
+        path: "{{ postgresql_data_dir }}/pg_hba.conf"
+        line: "local    {{ db_name }}    {{ db_user }}    scram-sha-256"
+      when: check.found == 0
+
+    - name: Restart postgresql
+      ansible.builtin.systemd:
+        name: postgresql
+        state: restarted
+
+    # Установка Woodpecker
+    - name: Create woodpecker user
+      user:
+        name: woodpecker
+        system: yes
+        home: /var/lib/woodpecker
+        shell: /sbin/nologin
+
+    - name: Create directories
+      file:
+        path: "{{ item }}"
+        state: directory
+        owner: woodpecker
+        group: woodpecker
+        mode: 0755
+      with_items:
+        - /etc/woodpecker
+        - /var/lib/woodpecker
+
+    # Скачивание и установка Server
+    - name: Download Woodpecker Server
+      get_url:
+        url: "https://github.com/woodpecker-ci/woodpecker/releases/download/{{ woodpecker_version }}/woodpecker-server_linux_amd64.tar.gz"
+        dest: /tmp/woodpecker-server.tar.gz
+
+    - name: Extract Server binary
+      unarchive:
+        src: /tmp/woodpecker-server.tar.gz
+        dest: /tmp/
+        remote_src: yes
+
+    - name: Install Server binary
+      copy:
+        src: "/tmp/woodpecker-server"
+        dest: "/usr/local/bin/woodpecker-server"
+        mode: 0755
+        remote_src: yes
+
+    # Скачивание и установка Agent
+    - name: Download Woodpecker Agent
+      get_url:
+        url: "https://github.com/woodpecker-ci/woodpecker/releases/download/{{ woodpecker_version }}/woodpecker-agent_linux_amd64.tar.gz"
+        dest: /tmp/woodpecker-agent.tar.gz
+
+    - name: Extract Agent binary
+      unarchive:
+        src: /tmp/woodpecker-agent.tar.gz
+        dest: /tmp/
+        remote_src: yes
+
+    - name: Install Agent binary
+      copy:
+        src: "/tmp/woodpecker-agent"
+        dest: "/usr/local/bin/woodpecker-agent"
+        mode: 0755
+        remote_src: yes
+
+    # Конфигурационные файлы
+    - name: Configure Woodpecker Server
+      template:
+        src: woodpecker-server.conf.j2
+        dest: /etc/woodpecker/server.conf
+        owner: woodpecker
+        group: woodpecker
+        mode: 0640
+
+    - name: Configure Woodpecker Agent
+      template:
+        src: woodpecker-agent.conf.j2
+        dest: /etc/woodpecker/agent.conf
+        owner: woodpecker
+        group: woodpecker
+        mode: 0640
+
+    # Systemd сервисы
+    - name: Create systemd service for Server
+      template:
+        src: woodpecker-server.service.j2
+        dest: /etc/systemd/system/woodpecker-server.service
+        mode: 0644
+
+    - name: Create systemd service for Agent
+      template:
+        src: woodpecker-agent.service.j2
+        dest: /etc/systemd/system/woodpecker-agent.service
+        mode: 0644
+
+    - name: Enable and start services
+      systemd:
+        name: "{{ item }}"
+        state: started
+        enabled: yes
+        daemon_reload: yes
+      with_items:
+        - woodpecker-server
+        - woodpecker-agent
+        - postgresql
+        - docker
+
+    - name: Cleanup temp files
+      file:
+        path: "/tmp/woodpecker-*"
+        state: absent

@@ -1,0 +1,18 @@
+[Unit]
+Description=Woodpecker CI Agent
+After=network.target woodpecker-server.service
+
+[Service]
+User=woodpecker
+Group=woodpecker
+EnvironmentFile=/etc/woodpecker/agent.conf
+ExecStart=/usr/local/bin/woodpecker-agent
+Restart=always
+RestartSec=3
+WorkingDirectory=/var/lib/woodpecker
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=woodpecker-agent
+
+[Install]
+WantedBy=multi-user.target
