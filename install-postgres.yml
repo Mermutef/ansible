@@ -2,7 +2,7 @@
   become: true
   become_method: su
   vars_files:
-    - vars.yml
+    - gitea_vars.yml
   tasks:
     - name: Update cache and install postgresql14-server
       apt_rpm:

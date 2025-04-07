@@ -2,16 +2,8 @@
   hosts: alt
   become: true
   become_method: su
-  vars:
-    woodpecker_version: "v3.4.0"
-    db_user: "woodpecker"
-    db_name: "woodpecker"
-    db_password: "woodpecker"
-    postgresql_data_dir: "/var/lib/pgsql/data"
-    agent_secret: "{{ lookup('password', '/dev/null length=32 chars=hexdigits') }}"
-    gitea_client_id: "60fab95a-f298-4d02-8d93-456fdb551bae"
-    gitea_client_secret: "gto_gndzjcpiympu4k3lfe54sjd2jchyqbgu36agqd4flt5c4ss4s4vq"
-
+  vars_files:
+    - woodpecker_vars.yml
   tasks:
     # Установка зависимостей
     - name: Install required packages
