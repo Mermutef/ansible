@@ -1,0 +1,29 @@
+- name: Deploy backup system
+  hosts: alt
+  become: true
+  become_method: su
+
+  tasks:
+    - name: Create backup directory
+      file:
+        path: /opt/backups
+        state: directory
+        mode: 0775
+        owner: root
+        group: root
+
+    - name: Deploy backup script
+      copy:
+        src: backup.sh
+        dest: /opt/backups/backup.sh
+        mode: 0755
+        owner: root
+        group: root
+
+    - name: Deploy restore script
+      copy:
+        src: restore.sh
+        dest: /opt/backups/restore.sh
+        mode: 0755
+        owner: root
+        group: root

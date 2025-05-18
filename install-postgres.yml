@@ -7,7 +7,7 @@
     - name: Update cache and install postgresql14-server
       apt_rpm:
         name: postgresql14-server
-        state: present
+        state: latest
         update_cache: yes
 
     - name: Check if PostgreSQL is initialized

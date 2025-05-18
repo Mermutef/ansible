@@ -1,0 +1,25 @@
+- name: Download latest backup
+  hosts: alt
+
+  vars:
+    local_backup_dir: "~/backups"
+
+  tasks:
+    - name: Find latest backup
+      shell: ls -t /opt/backups/full_backup_*.tar.gz | head -n 1
+      register: latest_backup
+      changed_when: false
+
+    - name: Create backups folder
+      delegate_to: localhost
+      become: false
+      file:
+        path: "{{ local_backup_dir }}"
+        state: directory
+        mode: 0755
+
+    - name: Download backup
+      fetch:
+        src: "{{ latest_backup.stdout }}"
+        dest: "{{ local_backup_dir }}/"
+        flat: yes

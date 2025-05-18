@@ -7,7 +7,7 @@
     - name: Utility present
       ansible.builtin.package:
         name: python3-module-psycopg2
-        state: present
+        state: latest
     
     - name: Create db user
       community.postgresql.postgresql_user:

@@ -1,0 +1,46 @@
+- name: Restore from backup
+  hosts: alt
+  become: true
+  become_method: su
+
+  tasks:
+    - name: Update cache and install unzip
+      apt_rpm:
+        name: unzip
+        state: latest
+        update_cache: yes
+
+    - name: Deploy restore script
+      copy:
+        src: restore.sh
+        dest: /opt/backups/restore.sh
+        mode: 0755
+        owner: root
+        group: root
+
+    - name: Find latest backup
+      shell: "ls -t /opt/backups/full_backup_*.tar.gz | head -n1"
+      register: latest_backup
+      changed_when: false
+
+    - name: Fail if no backups found
+      fail:
+        msg: "No backup files found in /opt/backups"
+      when: latest_backup.stdout == ""
+
+    - name: Stop services
+      service:
+        name: "{{ item }}"
+        state: stopped
+      loop: [gitea, woodpecker-server, woodpecker-agent]
+
+    - name: Execute restore script
+      command: "/bin/bash /opt/backups/restore.sh"
+      register: restore_result
+      changed_when: false
+
+    - name: Start services
+      service:
+        name: "{{ item }}"
+        state: started
+      loop: [gitea, woodpecker-server, woodpecker-agent]
