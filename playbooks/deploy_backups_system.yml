@@ -14,7 +14,7 @@
 
     - name: Deploy backup script
       copy:
-        src: backup.sh
+        src: ../roles/backup/files/backup.sh
         dest: /opt/backups/backup.sh
         mode: 0755
         owner: root
@@ -22,7 +22,7 @@
 
     - name: Deploy restore script
       copy:
-        src: restore.sh
+        src: ../roles/backup/files/restore.sh
         dest: /opt/backups/restore.sh
         mode: 0755
         owner: root

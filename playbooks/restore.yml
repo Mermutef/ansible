@@ -12,7 +12,7 @@
 
     - name: Deploy restore script
       copy:
-        src: restore.sh
+        src: ../roles/backup/files/restore.sh
         dest: /opt/backups/restore.sh
         mode: 0755
         owner: root
@@ -28,19 +28,8 @@
         msg: "No backup files found in /opt/backups"
       when: latest_backup.stdout == ""
 
-    - name: Stop services
-      service:
-        name: "{{ item }}"
-        state: stopped
-      loop: [gitea, woodpecker-server, woodpecker-agent]
-
     - name: Execute restore script
       command: "/bin/bash /opt/backups/restore.sh"
       register: restore_result
       changed_when: false
 
-    - name: Start services
-      service:
-        name: "{{ item }}"
-        state: started
-      loop: [gitea, woodpecker-server, woodpecker-agent]

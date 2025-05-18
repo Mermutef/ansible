@@ -3,16 +3,14 @@
   become: true
   become_method: su
   vars_files:
-    - woodpecker_vars.yml
+    - ../group_vars/woodpecker_vars.yml
   tasks:
-    # Установка зависимостей
     - name: Install required packages
       apt_rpm:
         name: ["postgresql14-server", "tar", "wget", "docker-engine"]
         state: latest
         update_cache: yes
 
-    # Настройка PostgreSQL
     - name: Create db user
       community.postgresql.postgresql_user:
         state: present
@@ -51,7 +49,6 @@
         name: postgresql
         state: restarted
 
-    # Установка Woodpecker
     - name: Create woodpecker user
       user:
         name: woodpecker
@@ -70,7 +67,6 @@
         - /etc/woodpecker
         - /var/lib/woodpecker
 
-    # Скачивание и установка Server
     - name: Download Woodpecker Server
       get_url:
         url: "https://github.com/woodpecker-ci/woodpecker/releases/download/{{ woodpecker_version }}/woodpecker-server_linux_amd64.tar.gz"
@@ -89,7 +85,6 @@
         mode: 0755
         remote_src: yes
 
-    # Скачивание и установка Agent
     - name: Download Woodpecker Agent
       get_url:
         url: "https://github.com/woodpecker-ci/woodpecker/releases/download/{{ woodpecker_version }}/woodpecker-agent_linux_amd64.tar.gz"
@@ -108,10 +103,9 @@
         mode: 0755
         remote_src: yes
 
-    # Конфигурационные файлы
     - name: Configure Woodpecker Server
       template:
-        src: woodpecker-server.conf.j2
+        src: ../roles/woodpecker/templates/woodpecker-server.conf.j2
         dest: /etc/woodpecker/server.conf
         owner: woodpecker
         group: woodpecker
@@ -119,22 +113,21 @@
 
     - name: Configure Woodpecker Agent
       template:
-        src: woodpecker-agent.conf.j2
+        src: ../roles/woodpecker/templates/woodpecker-agent.conf.j2
         dest: /etc/woodpecker/agent.conf
         owner: woodpecker
         group: woodpecker
         mode: 0640
 
-    # Systemd сервисы
     - name: Create systemd service for Server
       template:
-        src: woodpecker-server.service.j2
+        src: ../roles/woodpecker/templates/woodpecker-server.service.j2
         dest: /etc/systemd/system/woodpecker-server.service
         mode: 0644
 
     - name: Create systemd service for Agent
       template:
-        src: woodpecker-agent.service.j2
+        src: ../roles/woodpecker/templates/woodpecker-agent.service.j2
         dest: /etc/systemd/system/woodpecker-agent.service
         mode: 0644
 

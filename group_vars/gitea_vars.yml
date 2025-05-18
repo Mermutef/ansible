@@ -1,0 +1,4 @@
+db_user: gitea
+db_password: gitea
+db_name: giteadb
+ansible_ssh_pipelining: true

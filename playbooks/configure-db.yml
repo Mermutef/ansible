@@ -2,7 +2,8 @@
   become: true
   become_method: su
   vars_files:
-    - gitea_vars.yml
+    - ../group_vars/gitea_vars.yml
+    - ../group_vars/postgres_vars.yml
   tasks:
     - name: Utility present
       ansible.builtin.package:

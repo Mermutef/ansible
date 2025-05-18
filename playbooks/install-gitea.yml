@@ -16,7 +16,7 @@
 
     - name: Copy file with owner and permissions
       ansible.builtin.copy:
-        src: ./app.ini
+        src: ../roles/gitea/templates/app.ini
         dest: /etc/gitea/app.ini
         owner: gitea
         group: gitea
