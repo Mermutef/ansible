@@ -1,36 +1,48 @@
-- name: Upload latest local backup
+- name: Upload backup
   hosts: alt
 
   vars:
-    local_backup_dir: "~/backups"
-    remote_backup_dir: "/opt/backups"
+      local_backup_dir: "~/backups/{{ module }}"
+      remote_backup_dir: "/var/backups/{{ module }}"
+      backup_file: ""
 
   tasks:
-    - name: Check local backups
-      delegate_to: localhost
-      become: false
-      shell: "ls -la {{ local_backup_dir }}/full_backup_*.tar.gz || echo 'NO_BACKUPS'"
-      register: local_backups
-      changed_when: false
+      - name: Check local backups
+        delegate_to: localhost
+        become: false
+        shell: "ls -la {{ local_backup_dir }}/{{ module }}_backup_*.tar.gz || echo 'NO_BACKUPS'"
+        register: local_backups
+        changed_when: false
 
-    - name: Fail when no backups find locally
-      fail:
-        msg: "No backups in {{ local_backup_dir }}"
-      when: "'NO_BACKUPS' in local_backups.stdout"
+      - name: Fail when no backups find locally
+        fail:
+            msg: "No backups in {{ local_backup_dir }}"
+        when: "'NO_BACKUPS' in local_backups.stdout"
 
-    - name: Fetch latest local backup
-      delegate_to: localhost
-      become: false
-      shell: "ls -t {{ local_backup_dir }}/full_backup_*.tar.gz | head -n 1"
-      register: latest_local_backup
-      changed_when: false
+      - name: Find latest local backup if not specified
+        delegate_to: localhost
+        become: false
+        shell: "ls -t {{ local_backup_dir }}/{{ module }}_backup_*.tar.gz | head -n 1"
+        register: latest_local_backup
+        changed_when: false
+        when: backup_file == ""
 
+      - name: Set backup file path
+        set_fact:
+            final_backup_file: "{{ backup_file if backup_file != '' else latest_local_backup.stdout }}"
 
-    - name: Upload backup
-      become: true
-      become_method: su
-      copy:
-        src: "{{ latest_local_backup.stdout }}"
-        dest: "{{ remote_backup_dir }}/{{ latest_local_backup.stdout | basename }}"
-        mode: 0644
-      when: latest_local_backup.stdout != ""
+      - name: Fail if backup file does not exist
+        delegate_to: localhost
+        become: false
+        stat:
+            path: "{{ final_backup_file }}"
+        register: backup_stat
+        failed_when: not backup_stat.stat.exists
+
+      - name: Upload backup
+        become: true
+        become_method: su
+        copy:
+            src: "{{ final_backup_file }}"
+            dest: "{{ remote_backup_dir }}/{{ final_backup_file | basename }}"
+            mode: 0644

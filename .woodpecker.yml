@@ -1,0 +1,31 @@
+when:
+    event: [push, manual]
+
+steps:
+    - name: declare-env
+      image: alpine
+      commands:
+          - VERSION=$(grep 'version = ' .cz.toml | sed 's/.*version = "\(.*\)"/\1/')
+          - SHORT_SHA=$(echo $DRONE_COMMIT_SHA | cut -c1-7)
+          - echo $VERSION >> .tags
+          - echo $SHORT_SHA >> .tags
+    - name: frontend:build-and-publish
+      image: woodpeckerci/plugin-docker-buildx:3.2.0
+      settings:
+          platforms: linux/amd64
+          repo: gitea.example.com/user/repo-name/frontend
+          tags_file:
+              - .tags
+          env_file:
+              - .build-env
+          registry: gitea.example.com
+          username: user
+          password:
+              from_secret: token
+          custom_dns:
+              - 10.10.10.1
+              - 8.8.8.8
+          context: ./repo-name-fe
+          dockerfile: repo-name-fe/Dockerfile
+          cache_from: type=local,src=/tmp/docker-cache
+          cache_to: type=local,dest=/tmp/docker-cache

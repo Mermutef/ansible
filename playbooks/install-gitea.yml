@@ -2,25 +2,25 @@
   become: true
   become_method: su
   tasks:
-    - name: Update cache and install gitea
-      apt_rpm:
-        name: gitea 
-        state: latest
-        update_cache: yes
+      - name: Update cache and install gitea
+        apt_rpm:
+            name: gitea
+            state: latest
+            update_cache: yes
 
-    - name: Start and enable service
-      ansible.builtin.service:
-        name: gitea
-        state: started
-        enabled: true
+      - name: Start and enable service
+        ansible.builtin.service:
+            name: gitea
+            state: started
+            enabled: true
 
-    - name: Copy file with owner and permissions
-      ansible.builtin.copy:
-        src: ../roles/gitea/templates/app.ini
-        dest: /etc/gitea/app.ini
-        owner: gitea
-        group: gitea
-        mode: '0600'
+      - name: Copy file with owner and permissions
+        ansible.builtin.copy:
+            src: ../roles/gitea/templates/app.ini
+            dest: /etc/gitea/app.ini
+            owner: gitea
+            group: gitea
+            mode: "0600"
 
-    - name: Start gitea
-      ansible.builtin.shell: su -l gitea -s /bin/sh -c "/usr/bin/gitea web > /var/lib/gitea/last-start.log 2>&1 &"
+      - name: Start gitea
+        ansible.builtin.shell: su -l gitea -s /bin/sh -c "/usr/bin/gitea web > /var/lib/gitea/last-start.log 2>&1 &"

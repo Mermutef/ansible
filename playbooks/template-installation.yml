@@ -1,7 +1,56 @@
+- name: Install and restore Gitea
+  hosts: alt
+  vars:
+      module: gitea
+
+- import_playbook: sync-time.yml
+
 - import_playbook: install-postgres.yml
-- import_playbook: configure-db.yml
+  tags: gitea
+
+- import_playbook: configure-gitea-db.yml
+  tags: gitea
+
 - import_playbook: install-gitea.yml
-- import_playbook: install-woodpecker.yml
+  tags: gitea
+
 - import_playbook: deploy_backups_system.yml
+  vars:
+      module: gitea
+  tags: gitea
+
 - import_playbook: upload_backup.yml
+  vars:
+      module: gitea
+  tags: gitea
+
 - import_playbook: restore.yml
+  vars:
+      module: gitea
+  tags: gitea
+
+- name: Install and restore Woodpecker
+  hosts: alt
+  vars:
+      module: woodpecker
+
+- import_playbook: configure-woodpecker-db.yml
+  tags: woodpecker
+
+- import_playbook: install-woodpecker.yml
+  tags: woodpecker
+
+- import_playbook: deploy_backups_system.yml
+  vars:
+      module: woodpecker
+  tags: woodpecker
+
+- import_playbook: upload_backup.yml
+  vars:
+      module: woodpecker
+  tags: woodpecker
+
+- import_playbook: restore.yml
+  vars:
+      module: woodpecker
+  tags: woodpecker

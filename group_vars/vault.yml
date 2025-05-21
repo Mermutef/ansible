@@ -1,0 +1,10 @@
+---
+# Gitea secrets
+vault_gitea_db_password: "gitea"
+vault_gitea_secret_key: "SwJoZwoGuei5ql6YwdmFQMxoZAgGe1MOZBtoJLr5gYo="
+
+# Woodpecker secrets
+vault_woodpecker_db_password: "woodpecker"
+vault_woodpecker_agent_secret: "9c7dDeBcDffF43fBcbB3ddBbc0424d20"
+vault_woodpecker_gitea_client_id: "9a7e937d-d8bf-4e37-9b13-a6fae98dde84"
+vault_woodpecker_gitea_client_secret: "gto_5zgbmf55wxvldnjh2m22cqtxrg7ab5e5ycmeilgu7hwgwjkw777a"

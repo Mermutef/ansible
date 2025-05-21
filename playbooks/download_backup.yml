@@ -1,25 +1,36 @@
-- name: Download latest backup
+- name: Download backup
   hosts: alt
 
   vars:
-    local_backup_dir: "~/backups"
+      local_backup_dir: "~/backups/{{ module }}"
+      backup_file: ""
 
   tasks:
-    - name: Find latest backup
-      shell: ls -t /opt/backups/full_backup_*.tar.gz | head -n 1
-      register: latest_backup
-      changed_when: false
+      - name: Find latest backup if not specified
+        shell: "ls -t /var/backups/{{ module }}/{{ module }}_backup_*.tar.gz | head -n 1"
+        register: latest_backup
+        changed_when: false
+        when: backup_file == ""
 
-    - name: Create backups folder
-      delegate_to: localhost
-      become: false
-      file:
-        path: "{{ local_backup_dir }}"
-        state: directory
-        mode: 0755
+      - name: Set backup file path
+        set_fact:
+            final_backup_file: "{{ backup_file if backup_file != '' else latest_backup.stdout }}"
 
-    - name: Download backup
-      fetch:
-        src: "{{ latest_backup.stdout }}"
-        dest: "{{ local_backup_dir }}/"
-        flat: yes
+      - name: Fail if no backups found
+        fail:
+            msg: "No backup files found in /var/backups/{{ module }}"
+        when: final_backup_file == ""
+
+      - name: Create backups folder
+        delegate_to: localhost
+        become: false
+        file:
+            path: "{{ local_backup_dir }}"
+            state: directory
+            mode: 0755
+
+      - name: Download backup
+        fetch:
+            src: "{{ final_backup_file }}"
+            dest: "{{ local_backup_dir }}/"
+            flat: yes
