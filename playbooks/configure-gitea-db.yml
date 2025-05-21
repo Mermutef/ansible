@@ -1,0 +1,15 @@
+---
+- hosts: alt
+  become: true
+  become_method: su
+  vars_files:
+      - ../group_vars/gitea_vars.yml
+      - ../group_vars/postgres_vars.yml
+      - ../group_vars/vault.yml
+  tasks:
+      - name: Include database configuration tasks
+        ansible.builtin.include_tasks: ../roles/postgresql/tasks/configure-db.yml
+        vars:
+            db_user: "{{ gitea_db_user }}"
+            db_password: "{{ gitea_db_password }}"
+            db_name: "{{ gitea_db_name }}"

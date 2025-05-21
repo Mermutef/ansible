@@ -1,0 +1,43 @@
+---
+- name: Utility present
+  ansible.builtin.package:
+    name: python3-module-psycopg2
+    state: latest
+
+- name: Create db user
+  community.postgresql.postgresql_user:
+    state: present
+    name: "{{ db_user }}"
+    password: "{{ db_password }}"
+    role_attr_flags: LOGIN
+
+- name: Create db
+  community.postgresql.postgresql_db:
+    state: present
+    name: "{{ db_name }}"
+    owner: "{{ db_user }}"
+    template: template0
+    encoding: UTF8
+    lc_collate: 'en_US.UTF-8'
+    lc_ctype: 'en_US.UTF-8'
+
+- name: Check if {{ db_user }} have access to {{ db_name }}
+  lineinfile:
+    state: absent
+    path: "{{ postgresql_data_dir }}/pg_hba.conf"
+    regexp: "^local    {{ db_name }}    {{ db_user }}    scram-sha-256$"
+  check_mode: true
+  changed_when: false
+  register: check
+
+- name: Define {{ db_user }} access to {{ db_name }} if undefined
+  lineinfile:
+    state: present
+    path: "{{ postgresql_data_dir }}/pg_hba.conf"
+    line: "local    {{ db_name }}    {{ db_user }}    scram-sha-256"
+  when: check.found == 0
+
+- name: Restart postgresql
+  ansible.builtin.systemd:
+    name: postgresql
+    state: restarted 

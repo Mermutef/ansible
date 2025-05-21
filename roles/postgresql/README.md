@@ -1,6 +1,6 @@
 # Роль postgresql
 
-Роль для установки и настройки PostgreSQL для Gitea.
+Роль для установки и настройки PostgreSQL для Gitea и Woodpecker CI.
 
 ## Описание
 
@@ -8,8 +8,10 @@
 
 -   Установку PostgreSQL из пакетов ALT Linux
 -   Настройку системного пользователя
--   Создание базы данных и пользователей
+-   Создание баз данных и пользователей
 -   Настройку прав доступа
+-   Настройку резервного копирования
+-   Интеграцию с Gitea и Woodpecker CI
 
 ## Использование
 
@@ -31,6 +33,9 @@ ansible-playbook -i inventory/hosts playbooks/install-postgresql.yml
 -   `shared_buffers` - размер разделяемой памяти
 -   `work_mem` - память для операций
 -   `maintenance_work_mem` - память для обслуживания
+-   `wal_level` - уровень логирования WAL
+-   `max_wal_senders` - максимальное количество WAL отправителей
+-   `hot_standby` - включение горячего резервного копирования
 
 ## Безопасность
 
@@ -39,11 +44,15 @@ ansible-playbook -i inventory/hosts playbooks/install-postgresql.yml
 -   Данные хранятся в `/var/lib/postgresql` с ограниченными правами доступа
 -   Используется шифрование паролей в базе данных
 -   Настроены ограничения на подключение
+-   Включено SSL-соединение
+-   Настроена аутентификация по паролю
 
 ## Мониторинг
 
 -   Журналы: `/var/log/postgresql/`
 -   Статус сервиса: `systemctl status postgresql`
+-   Метрики: `pg_stat_activity`
+-   Производительность: `pg_stat_statements`
 
 ## Устранение неполадок
 
@@ -79,8 +88,14 @@ ansible-playbook -i inventory/hosts playbooks/install-postgresql.yml
     ```
 
 6. Проверка пользователей:
+
     ```bash
     psql -U postgres -c "\du"
+    ```
+
+7. Проверка резервных копий:
+    ```bash
+    ls -l /var/backups/postgresql/
     ```
 
 ## Проверка работоспособности
@@ -94,4 +109,8 @@ su - postgres -c "psql -c 'SELECT version();'"
 
 # Проверка подключения
 su - postgres -c "psql -d giteadb -c 'SELECT 1'"
+su - postgres -c "psql -d woodpecker -c 'SELECT 1'"
+
+# Проверка репликации
+su - postgres -c "psql -c 'SELECT * FROM pg_stat_replication;'"
 ```

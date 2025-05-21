@@ -4,26 +4,60 @@
   become_method: su
 
   tasks:
-    - name: Create backup directory
-      file:
-        path: /opt/backups
-        state: directory
-        mode: 0775
-        owner: root
-        group: root
+      - name: Update cache and install unzip
+        apt_rpm:
+            name: unzip
+            state: latest
+            update_cache: yes
 
-    - name: Deploy backup script
-      copy:
-        src: ../roles/backup/files/backup.sh
-        dest: /opt/backups/backup.sh
-        mode: 0755
-        owner: root
-        group: root
+      - name: Create backup group
+        group:
+            name: backup
+            state: present
 
-    - name: Deploy restore script
-      copy:
-        src: ../roles/backup/files/restore.sh
-        dest: /opt/backups/restore.sh
-        mode: 0755
-        owner: root
-        group: root
+      - name: Add users to group
+        user:
+            name: "{{ item }}"
+            groups: backup
+            append: yes
+        loop:
+            - gitea
+            - woodpecker
+            - root
+            - postgres
+
+      - name: Create backups directories
+        file:
+            path: "{{ item }}"
+            state: directory
+            mode: 0775
+            owner: root
+            group: backup
+        with_items:
+            - /var/backups
+            - /var/backups/gitea
+            - /var/backups/woodpecker
+            - /opt/backups/gitea
+            - /opt/backups/woodpecker
+
+      - name: Deploy backup scripts
+        copy:
+            src: "../roles/backup/files/{{ item }}_backup.sh"
+            dest: "/opt/backups/{{ item }}/{{ item }}_backup.sh"
+            mode: 0755
+            owner: root
+            group: backup
+        with_items:
+            - gitea
+            - woodpecker
+
+      - name: Deploy restore scripts
+        copy:
+            src: "../roles/backup/files/{{ item }}_restore.sh"
+            dest: "/opt/backups/{{ item }}/{{ item }}_restore.sh"
+            mode: 0755
+            owner: root
+            group: backup
+        with_items:
+            - gitea
+            - woodpecker

@@ -4,15 +4,7 @@
   become_method: su
 
   tasks:
-    - name: Deploy backup script
-      copy:
-        src: ../roles/backup/files/backup.sh
-        dest: /opt/backups/backup.sh
-        mode: 0755
-        owner: root
-        group: root
-
-    - name: Execute backup script
-      command: /bin/bash /opt/backups/backup.sh
-      register: backup_result
-      changed_when: false
+      - name: Execute backup script
+        command: /bin/bash /opt/backups/{{ module }}/{{ module }}_backup.sh
+        register: backup_result
+        changed_when: false

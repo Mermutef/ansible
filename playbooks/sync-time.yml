@@ -1,0 +1,18 @@
+- hosts: alt
+  become: true
+  become_method: su
+  tasks:
+      - name: Update cache and install chronyc
+        apt_rpm:
+            name: chrony
+            state: latest
+            update_cache: yes
+
+      - name: Start and enable service
+        ansible.builtin.service:
+            name: chrony
+            state: started
+            enabled: true
+
+      - name: Sync date with net
+        ansible.builtin.shell: chronyc -a makestep

@@ -1,82 +1,85 @@
 # Роль backup
 
-Роль для настройки и управления резервным копированием Gitea и Woodpecker CI.
+Роль для настройки системы резервного копирования Gitea и Woodpecker CI.
+
+## Содержание
+
+-   [Описание](#описание)
+-   [Структура](#структура)
+-   [Использование](#использование)
+-   [Конфигурация](#конфигурация)
+-   [Устранение неполадок](#устранение-неполадок)
 
 ## Описание
 
 Эта роль обеспечивает:
 
--   Создание резервных копий баз данных
--   Создание резервных копий конфигурационных файлов
--   Создание резервных копий данных пользователей
--   Создание резервных копий репозиториев
+-   Создание резервных копий Gitea и Woodpecker CI
 -   Восстановление из резервных копий
+-   Базовое управление резервными копиями
 
-## Файлы
+## Структура
 
--   `files/backup.sh` - скрипт для создания резервных копий
--   `files/restore.sh` - скрипт для восстановления из резервных копий
+```
+roles/backup/
+├── files/                    # Скрипты резервного копирования
+│   ├── gitea_backup.sh      # Скрипт резервного копирования Gitea
+│   ├── gitea_restore.sh     # Скрипт восстановления Gitea
+│   ├── woodpecker_backup.sh # Скрипт резервного копирования Woodpecker
+│   └── woodpecker_restore.sh # Скрипт восстановления Woodpecker
+└── README.md                # Документация
+```
 
 ## Использование
 
 ### Создание резервной копии
 
 ```bash
-ansible-playbook -i inventory/hosts playbooks/backup.yml
+# Резервное копирование Gitea
+ansible-playbook -i inventory/hosts playbooks/backup.yml -e module=gitea
+
+# Резервное копирование Woodpecker
+ansible-playbook -i inventory/hosts playbooks/backup.yml -e module=woodpecker
 ```
 
 ### Восстановление из резервной копии
 
 ```bash
-ansible-playbook -i inventory/hosts playbooks/restore.yml
+# Восстановление Gitea
+ansible-playbook -i inventory/hosts playbooks/restore.yml -e module=gitea
+
+# Восстановление Woodpecker
+ansible-playbook -i inventory/hosts playbooks/restore.yml -e module=woodpecker
+
+# Восстановление конкретной резервной копии
+ansible-playbook -i inventory/hosts playbooks/restore.yml -e "module=gitea backup_file=/path/to/backup.tar.gz"
 ```
 
-### Загрузка резервной копии на сервер
+## Конфигурация
 
-```bash
-ansible-playbook -i inventory/hosts playbooks/upload_backup.yml
-```
+### Директории резервных копий
 
-### Скачивание резервной копии с сервера
+-   `/var/backups/gitea` - резервные копии Gitea
+-   `/var/backups/woodpecker` - резервные копии Woodpecker
 
-```bash
-ansible-playbook -i inventory/hosts playbooks/download_backup.yml
-```
+### Права доступа
 
-## Структура резервных копий
-
-Резервные копии сохраняются в директории `/opt/backups` и включают:
-
--   `gitea-dump-*.zip` - дамп Gitea
--   `woodpecker-data-*.tar.gz` - данные Woodpecker CI
--   `woodpecker-config-*` - конфигурация Woodpecker CI
--   `gitea-db-*.sql` - дамп базы данных Gitea
--   `woodpecker-db-*.sql` - дамп базы данных Woodpecker CI
-
-Все файлы объединяются в один архив `full_backup_YYYY-MM-DD_HH-MM-SS.tar.gz`.
-
-## Безопасность
-
--   Резервные копии создаются с ограниченными правами доступа
--   Файлы баз данных доступны только пользователю postgres
--   Конфигурационные файлы доступны только соответствующим пользователям
+-   Владелец: `root`
+-   Группа: `backup`
+-   Права: `750` для директорий, `640` для файлов
 
 ## Устранение неполадок
 
-1. Проверка наличия резервных копий:
+### Проверка резервных копий
 
-    ```bash
-    ls -l /opt/backups/
-    ```
+```bash
+ls -l /var/backups/gitea/
+ls -l /var/backups/woodpecker/
+```
 
-2. Проверка журналов восстановления:
+### Проверка прав доступа
 
-    ```bash
-    cat /var/log/gitea/restore.log
-    ```
-
-3. Проверка прав доступа:
-    ```bash
-    ls -l /opt/backups/
-    ls -l /var/log/gitea/restore.log
-    ```
+```bash
+ls -l /var/backups/
+ls -l /usr/local/bin/backup.sh
+```

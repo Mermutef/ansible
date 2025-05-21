@@ -2,16 +2,36 @@
 
 Роль для установки и настройки Woodpecker CI - системы непрерывной интеграции.
 
+## Содержание
+
+-   [Описание](#описание)
+-   [Структура](#структура)
+-   [Использование](#использование)
+-   [Конфигурация](#конфигурация)
+-   [Устранение неполадок](#устранение-неполадок)
+
 ## Описание
 
 Эта роль обеспечивает:
 
--   Установку Woodpecker CI из пакетов ALT Linux
+-   Установку Woodpecker CI из артефактов официального репозитория
 -   Настройку системного пользователя
 -   Настройку конфигурации
 -   Настройку системного сервиса
 -   Интеграцию с Gitea
--   Настройку агентов
+-   Настройку агентов CI
+
+## Структура
+
+```
+roles/woodpecker/
+├── templates/                    # Шаблоны конфигурации
+│   ├── woodpecker-server.env.j2 # Шаблон конфигурации сервера
+│   ├── woodpecker-agent.env.j2  # Шаблон конфигурации агента
+│   ├── woodpecker-server.service.j2 # Шаблон сервисного файла сервера
+│   └── woodpecker-agent.service.j2  # Шаблон сервисного файла агента
+└── README.md                    # Документация
+```
 
 ## Использование
 
@@ -21,76 +41,60 @@
 ansible-playbook -i inventory/hosts playbooks/install-woodpecker.yml
 ```
 
-### Установка и настройка Woodpecker CI с Gitea
+### Настройка базы данных
 
 ```bash
-ansible-playbook -i inventory/hosts playbooks/install-and-configure-woodpecker.yml
+ansible-playbook -i inventory/hosts playbooks/configure-woodpecker-db.yml
 ```
 
 ## Конфигурация
 
-Основной конфигурационный файл: `/etc/woodpecker/config.yml`
+Основные конфигурационные файлы:
+
+-   `/etc/woodpecker/woodpecker-server.env` - конфигурация сервера
+-   `/etc/woodpecker/woodpecker-agent.env` - конфигурация агента
 
 Важные параметры:
 
--   `server` - настройки сервера
-    -   `host` - хост сервера
-    -   `port` - порт сервера
-    -   `oauth2` - настройки OAuth2
--   `database` - настройки базы данных
-    -   `driver` - драйвер БД
-    -   `datasource` - строка подключения
--   `agent` - настройки агента
-    -   `backend` - бэкенд
-    -   `platform` - платформа
-
-## Безопасность
-
--   Woodpecker CI работает под системным пользователем `woodpecker`
--   Конфигурационный файл доступен только пользователю `woodpecker`
--   Данные хранятся в `/var/lib/woodpecker` с ограниченными правами доступа
--   Используется OAuth2 для аутентификации
--   Настроены ограничения на подключение
-
-## Мониторинг
-
--   Журналы: `/var/log/woodpecker/`
--   Статус сервиса: `systemctl status woodpecker`
+-   `WOODPECKER_HOST` - хост сервера
+-   `WOODPECKER_GITEA_URL` - URL Gitea
+-   `WOODPECKER_GITEA_CLIENT` - OAuth2 client ID
+-   `WOODPECKER_GITEA_SECRET` - OAuth2 client secret
+-   `WOODPECKER_AGENT_SECRET` - секрет для аутентификации агента
+-   `WOODPECKER_DATABASE_DRIVER` - драйвер БД
+-   `WOODPECKER_DATABASE_DATASOURCE` - строка подключения к БД
 
 ## Устранение неполадок
 
-1. Проверка статуса сервиса:
+### Проверка статуса сервисов
 
-    ```bash
-    systemctl status woodpecker
-    ```
+```bash
+systemctl status woodpecker-server
+systemctl status woodpecker-agent
+```
 
-2. Проверка логов:
+### Проверка логов
 
-    ```bash
-    journalctl -u woodpecker
-    ```
+```bash
+journalctl -u woodpecker-server
+journalctl -u woodpecker-agent
+```
 
-3. Проверка конфигурации:
+### Проверка конфигурации
 
-    ```bash
-    woodpecker doctor
-    ```
+```bash
+cat /etc/woodpecker/woodpecker-server.env
+cat /etc/woodpecker/woodpecker-agent.env
+```
 
-4. Проверка прав доступа:
+### Проверка подключения к Gitea
 
-    ```bash
-    ls -l /etc/woodpecker/config.yml
-    ls -l /var/lib/woodpecker/
-    ```
+```bash
+curl -s http://localhost:8000/api/health
+```
 
-5. Проверка подключения к Gitea:
+### Проверка агентов
 
-    ```bash
-    curl -s http://localhost:8000/api/health
-    ```
-
-6. Проверка агентов:
-    ```bash
-    woodpecker agent info
-    ```
+```bash
+curl -s http://localhost:8000/api/agents
+```

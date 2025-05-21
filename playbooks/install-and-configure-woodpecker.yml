@@ -1,0 +1,15 @@
+- name: Install and configure Woodpecker
+  hosts: alt
+  vars:
+      module: woodpecker
+
+- import_playbook: configure-woodpecker-db.yml
+  tags: woodpecker
+
+- import_playbook: install-woodpecker.yml
+  tags: woodpecker
+
+- import_playbook: deploy_backups_system.yml
+  vars:
+      module: woodpecker
+  tags: woodpecker

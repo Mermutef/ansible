@@ -2,6 +2,14 @@
 
 Роль для установки и настройки Gitea - системы управления Git-репозиториями.
 
+## Содержание
+
+-   [Описание](#описание)
+-   [Структура](#структура)
+-   [Использование](#использование)
+-   [Конфигурация](#конфигурация)
+-   [Устранение неполадок](#устранение-неполадок)
+
 ## Описание
 
 Эта роль обеспечивает:
@@ -10,11 +18,15 @@
 -   Настройку системного пользователя
 -   Настройку конфигурации
 -   Настройку системного сервиса
--   Интеграцию с PostgreSQL
 
-## Файлы
+## Структура
 
--   `templates/app.ini` - шаблон конфигурационного файла Gitea
+```
+roles/gitea/
+├── templates/           # Шаблоны конфигурации
+│   └── app.ini        # Шаблон конфигурации Gitea
+└── README.md          # Документация
+```
 
 ## Использование
 
@@ -24,10 +36,10 @@
 ansible-playbook -i inventory/hosts playbooks/install-gitea.yml
 ```
 
-### Установка и настройка Gitea с PostgreSQL
+### Настройка базы данных
 
 ```bash
-ansible-playbook -i inventory/hosts playbooks/install-and-configure-gitea.yml
+ansible-playbook -i inventory/hosts playbooks/configure-gitea-db.yml
 ```
 
 ## Конфигурация
@@ -36,53 +48,53 @@ ansible-playbook -i inventory/hosts playbooks/install-and-configure-gitea.yml
 
 Важные параметры:
 
--   `DOMAIN` - домен Gitea
--   `ROOT_URL` - корневой URL
--   `HTTP_ADDR` - адрес прослушивания
--   `HTTP_PORT` - порт HTTP
--   `SECRET_KEY` - секретный ключ
--   `INSTALL_LOCK` - блокировка установки
-
-## Безопасность
-
--   Gitea работает под системным пользователем `gitea`
--   Конфигурационный файл доступен только пользователю `gitea`
--   Данные хранятся в `/var/lib/gitea` с ограниченными правами доступа
--   Используется шифрование паролей в базе данных
-
-## Мониторинг
-
--   Журналы: `/var/log/gitea/`
--   Статус сервиса: `systemctl status gitea`
+-   `[server]` - настройки сервера
+    -   `DOMAIN` - домен сервера
+    -   `ROOT_URL` - корневой URL
+    -   `HTTP_ADDR` - адрес для HTTP
+    -   `HTTP_PORT` - порт для HTTP
+-   `[database]` - настройки базы данных
+    -   `DB_TYPE` - тип БД
+    -   `HOST` - хост БД
+    -   `NAME` - имя БД
+    -   `USER` - пользователь БД
+    -   `PASSWD` - пароль БД
+-   `[security]` - настройки безопасности
+    -   `INSTALL_LOCK` - блокировка установки
+    -   `SECRET_KEY` - секретный ключ
+-   `[oauth2]` - настройки OAuth2
+    -   `ENABLE` - включение OAuth2
+    -   `JWT_SECRET` - секрет JWT
 
 ## Устранение неполадок
 
-1. Проверка статуса сервиса:
+### Проверка статуса сервиса
 
-    ```bash
-    systemctl status gitea
-    ```
+```bash
+systemctl status gitea
+```
 
-2. Проверка логов:
+### Проверка логов
 
-    ```bash
-    journalctl -u gitea
-    ```
+```bash
+journalctl -u gitea
+```
 
-3. Проверка конфигурации:
+### Проверка конфигурации
 
-    ```bash
-    gitea doctor
-    ```
+```bash
+cat /etc/gitea/app.ini
+```
 
-4. Проверка прав доступа:
+### Проверка прав доступа
 
-    ```bash
-    ls -l /etc/gitea/app.ini
-    ls -l /var/lib/gitea/
-    ```
+```bash
+ls -l /etc/gitea/app.ini
+ls -l /var/lib/gitea/
+```
 
-5. Проверка подключения к базе данных:
-    ```bash
-    su -l postgres -s /bin/bash -c "psql -d giteadb -c 'SELECT 1'"
-    ```
+### Проверка подключения
+
+```bash
+curl -s http://localhost:4000/api/v1/version
+```

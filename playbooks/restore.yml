@@ -2,34 +2,26 @@
   hosts: alt
   become: true
   become_method: su
+  vars:
+      backup_file: ""
 
   tasks:
-    - name: Update cache and install unzip
-      apt_rpm:
-        name: unzip
-        state: latest
-        update_cache: yes
+      - name: Find latest backup if not specified
+        shell: "ls -t /var/backups/{{ module }}/{{ module }}_backup_*.tar.gz | head -n1"
+        register: latest_backup
+        changed_when: false
+        when: backup_file == ""
 
-    - name: Deploy restore script
-      copy:
-        src: ../roles/backup/files/restore.sh
-        dest: /opt/backups/restore.sh
-        mode: 0755
-        owner: root
-        group: root
+      - name: Set backup file path
+        set_fact:
+            final_backup_file: "{{ backup_file if backup_file != '' else latest_backup.stdout }}"
 
-    - name: Find latest backup
-      shell: "ls -t /opt/backups/full_backup_*.tar.gz | head -n1"
-      register: latest_backup
-      changed_when: false
+      - name: Fail if no backups found
+        fail:
+            msg: "No backup files found in /var/backups/{{ module }}"
+        when: final_backup_file == ""
 
-    - name: Fail if no backups found
-      fail:
-        msg: "No backup files found in /opt/backups"
-      when: latest_backup.stdout == ""
-
-    - name: Execute restore script
-      command: "/bin/bash /opt/backups/restore.sh"
-      register: restore_result
-      changed_when: false
-
+      - name: Execute restore script
+        command: "/bin/bash /opt/backups/{{ module }}/{{ module }}_restore.sh {{ final_backup_file }}"
+        register: restore_result
+        changed_when: false

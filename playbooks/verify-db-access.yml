@@ -1,0 +1,42 @@
+---
+- name: Verify database access
+  hosts: alt
+  become: true
+  become_method: su
+  vars_files:
+      - ../group_vars/gitea_vars.yml
+      - ../group_vars/woodpecker_vars.yml
+      - ../group_vars/vault.yml
+
+  tasks:
+      - name: Install PostgreSQL client
+        ansible.builtin.package:
+            name: postgresql14-client
+            state: latest
+
+      - name: Verify Gitea database access
+        community.postgresql.postgresql_query:
+            db: "{{ db_name }}"
+            login_host: localhost
+            login_user: "{{ db_user }}"
+            login_password: "{{ db_password }}"
+            query: "SELECT 1"
+        register: gitea_db_check
+        failed_when: gitea_db_check.query_result[0][0] != 1
+        no_log: true
+
+      - name: Verify Woodpecker database access
+        community.postgresql.postgresql_query:
+            db: "{{ db_name }}"
+            login_host: localhost
+            login_user: "{{ db_user }}"
+            login_password: "{{ db_password }}"
+            query: "SELECT 1"
+        register: woodpecker_db_check
+        failed_when: woodpecker_db_check.query_result[0][0] != 1
+        no_log: true
+
+      - name: Show verification results
+        debug:
+            msg: "Database access verification completed successfully"
+        when: gitea_db_check.query_result[0][0] == 1 and woodpecker_db_check.query_result[0][0] == 1
