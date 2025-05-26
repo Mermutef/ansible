@@ -1,8 +1,8 @@
 [alt]
-192.168.56.101 
+10.7.70.49 
 
 [alt:vars]
 ansible_ssh_private_key_file=~/.ssh/id_ed25519
 ansible_user=user
 ansible_become_pass=12345
-ansible_python_interpreter=/usr/bin/python3.12
+ansible_python_interpreter=/usr/bin/python3

@@ -4,6 +4,7 @@
   become_method: su
   vars_files:
       - ../group_vars/woodpecker_vars.yml
+      - ../group_vars/host_vars.yml
       - ../group_vars/vault.yml
   tasks:
       - name: Install required packages
